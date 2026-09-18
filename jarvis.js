@@ -213,49 +213,72 @@ function smartFallback(command){
 }
 
 /* =========================================================
-   VOZ
+   VOZ JARVIS V7
+   Voz masculina en español + perfiles + pausas naturales.
+   Sin API externa: usa las voces disponibles en el dispositivo.
    ========================================================= */
 function setupJarvisVoice(){
-  if(!("speechSynthesis" in window)) return;
+  if(!("speechSynthesis" in window)){
+    if(voiceStatus) voiceStatus.textContent="La síntesis de voz no está disponible en este navegador.";
+    return;
+  }
 
   const loadVoices=()=>{
     availableVoices=window.speechSynthesis.getVoices()||[];
     populateVoiceSelector();
-
-    const spanishMale=getSpanishMaleVoices();
+    const voices=getSpanishMaleVoices();
     const saved=localStorage.getItem(VOICE_KEY);
     if(saved){
-      const selected=spanishMale.find(v=>v.voiceURI===saved);
-      if(selected){jarvisVoice=selected; if(voiceSelect) voiceSelect.value=selected.voiceURI; return;}
+      const savedVoice=voices.find(v=>v.voiceURI===saved);
+      if(savedVoice){
+        jarvisVoice=savedVoice;
+        if(voiceSelect) voiceSelect.value=savedVoice.voiceURI;
+        updateVoiceStatus();
+        return;
+      }
       localStorage.removeItem(VOICE_KEY);
     }
 
-    // Solo voces masculinas en español.
-    const preferred=[/Microsoft.*(Raul|Raúl)/i,/Microsoft.*(Jorge|Pablo|Gonzalo|Alvaro|Álvaro|Alonso)/i,/Google.*(Espa[nñ]ol|Spanish)/i,/Microsoft.*Spanish/i];
+    // Preferencias sin limitar a nombres concretos: primero voces locales de español.
+    const preferred=[
+      v=>/^es-CO$/i.test(v.lang) && v.localService,
+      v=>/^es-MX$/i.test(v.lang) && v.localService,
+      v=>/^es-ES$/i.test(v.lang) && v.localService,
+      v=>/^es(?:-|_)/i.test(v.lang) && v.localService,
+      v=>/^es(?:-|_)/i.test(v.lang)
+    ];
     jarvisVoice=null;
-    for(const re of preferred){jarvisVoice=spanishMale.find(v=>re.test(v.name));if(jarvisVoice)break;}
-    if(!jarvisVoice) jarvisVoice=spanishMale[0]||null;
+    for(const rule of preferred){
+      jarvisVoice=voices.find(rule);
+      if(jarvisVoice) break;
+    }
     if(voiceSelect && jarvisVoice) voiceSelect.value=jarvisVoice.voiceURI;
+    updateVoiceStatus();
   };
 
-  window.speechSynthesis.cancel();
   loadVoices();
-  if(typeof window.speechSynthesis.onvoiceschanged!=="undefined") window.speechSynthesis.onvoiceschanged=loadVoices;
+  // Chrome/Edge suelen cargar las voces después del primer acceso.
+  window.speechSynthesis.onvoiceschanged=loadVoices;
 }
 
 function getSpanishMaleVoices(){
   const femaleNames=/female|woman|mujer|sabina|monica|mónica|paulina|helena|laura|lucia|lucía|maria|maría|elena|sofia|sofía|camila|valentina|paloma|teresa|carmen|beatriz|isabel|gabriela|carolina|daniela|adriana|patricia|alejandra|veronica|verónica|silvia|rosa|natalia|ximena|jimena|fernanda|lorena|claudia|gloria|susana|angela|ángela|andrea|mariana|juliana|tatiana|diana|estefania|estefanía|paola|viviana|yaneth|yolanda/i;
-  const maleNames=/male|man|hombre|jorge|pablo|alvaro|álvaro|alonso|raul|raúl|gonzalo|diego|carlos|juan|andres|andrés|miguel|david|sergio|daniel|enrique|eduardo|roberto|hector|héctor|ruben|rubén|felipe|mateo|sebastian|sebastián|alejandro|cristian|cristian|oscar|óscar|manuel|francisco|rafael|gabriel|javier|vicente|martin|martín|luis|fernando|ricardo|samuel|nicolas|nicolás|tomas|tomás|esteban|bruno|marcos|ivan|iván|adrian|adrián|emilio|hugo|arturo|cesar|césar|ignacio|joaquin|joaquín|maximiliano|ramiro|santiago/i;
+  const maleNames=/male|man|hombre|jorge|pablo|alvaro|álvaro|alonso|raul|raúl|gonzalo|diego|carlos|juan|andres|andrés|miguel|david|sergio|daniel|enrique|eduardo|roberto|hector|héctor|ruben|rubén|felipe|mateo|sebastian|sebastián|alejandro|cristian|oscar|óscar|manuel|francisco|rafael|gabriel|javier|vicente|martin|martín|luis|fernando|ricardo|samuel|nicolas|nicolás|tomas|tomás|esteban|bruno|marcos|ivan|iván|adrian|adrián|emilio|hugo|arturo|cesar|césar|ignacio|joaquin|joaquín|maximiliano|ramiro|santiago/i;
   return availableVoices.filter(v=>/^es(?:-|_)/i.test(v.lang) && !femaleNames.test(v.name) && maleNames.test(v.name));
 }
 
 function populateVoiceSelector(){
   if(!voiceSelect) return;
-  const current=voiceSelect.value;
   const voices=getSpanishMaleVoices().slice().sort((a,b)=>a.lang.localeCompare(b.lang)||a.name.localeCompare(b.name));
+  const previous=voiceSelect.value;
   voiceSelect.innerHTML="";
   if(!voices.length){
-    const o=document.createElement("option");o.value="";o.textContent="No hay voces masculinas en español disponibles";voiceSelect.appendChild(o);return;
+    const o=document.createElement("option");
+    o.value="";
+    o.textContent="No hay voces masculinas en español disponibles";
+    voiceSelect.appendChild(o);
+    if(voiceStatus) voiceStatus.textContent="No se detectó una voz masculina en español en este dispositivo.";
+    return;
   }
   voices.forEach(v=>{
     const o=document.createElement("option");
@@ -263,80 +286,114 @@ function populateVoiceSelector(){
     o.textContent=`${v.name} — ${v.lang}${v.localService?" · local":""}`;
     voiceSelect.appendChild(o);
   });
-  if(current && voices.some(v=>v.voiceURI===current)) voiceSelect.value=current;
+  if(previous && voices.some(v=>v.voiceURI===previous)) voiceSelect.value=previous;
   else if(jarvisVoice && voices.some(v=>v.voiceURI===jarvisVoice.voiceURI)) voiceSelect.value=jarvisVoice.voiceURI;
+  else if(voices[0]) voiceSelect.value=voices[0].voiceURI;
 }
 
 function selectJarvisVoice(uri){
-  const v=availableVoices.find(x=>x.voiceURI===uri);
-  if(!v) return;
+  const v=availableVoices.find(x=>x.voiceURI===uri && /^es(?:-|_)/i.test(x.lang));
+  if(!v || !getSpanishMaleVoices().some(x=>x.voiceURI===v.voiceURI)) return;
   jarvisVoice=v;
   localStorage.setItem(VOICE_KEY,v.voiceURI);
-  if(voiceStatus) voiceStatus.textContent=`Voz seleccionada: ${v.name} (${v.lang}).`;
+  updateVoiceStatus();
 }
 
-function speak(text){
-  if(!("speechSynthesis" in window)) return;
-  setupJarvisVoice();
-  if(voiceSelect && voiceSelect.value) selectJarvisVoice(voiceSelect.value);
-  window.speechSynthesis.cancel();
+function getVoiceProfile(){
+  return localStorage.getItem("super_jarvis_voice_profile")||"cinematic";
+}
 
-  const u=new SpeechSynthesisUtterance(text);
-  if(jarvisVoice){
+function getVoiceSettings(){
+  const profile=getVoiceProfile();
+  if(profile==="natural") return {rate:.90,pitch:.78};
+  if(profile==="command") return {rate:.84,pitch:.60};
+  return {rate:.78,pitch:.52}; // Cinemático
+}
+
+function updateVoiceStatus(){
+  if(!voiceStatus) return;
+  const profileNames={cinematic:"Cinemático",natural:"Natural",command:"Comando"};
+  voiceStatus.textContent=jarvisVoice
+    ? `Voz: ${jarvisVoice.name} (${jarvisVoice.lang}) · Perfil: ${profileNames[getVoiceProfile()]||"Cinemático"}.`
+    : `Perfil: ${profileNames[getVoiceProfile()]||"Cinemático"}.`;
+}
+
+function splitSpeech(text){
+  return String(text).replace(/\s+/g," ").trim().split(/(?<=[.!?;:])\s+/).filter(Boolean);
+}
+
+let speechRunId=0;
+function speak(text){
+  if(!("speechSynthesis" in window) || !text) return;
+  if(!jarvisVoice){
+    const voices=getSpanishMaleVoices();
+    if(voices.length) jarvisVoice=voices[0];
+  }
+  if(!jarvisVoice) return;
+
+  const run=++speechRunId;
+  window.speechSynthesis.cancel();
+  const settings=getVoiceSettings();
+  const parts=splitSpeech(text);
+  let index=0;
+
+  document.body.classList.add("jarvis-speaking");
+  if(micStatus&&!isListening) micStatus.textContent="JARVIS está hablando...";
+
+  const next=()=>{
+    if(run!==speechRunId || index>=parts.length){
+      if(run===speechRunId){
+        document.body.classList.remove("jarvis-speaking");
+        if(micStatus&&!isListening) micStatus.textContent="Listo.";
+      }
+      return;
+    }
+    const u=new SpeechSynthesisUtterance(parts[index++]);
     u.voice=jarvisVoice;
     u.lang=jarvisVoice.lang;
-  }else{
-    u.lang="es-CO";
-  }
-
-  // Ajustes para un carácter más parecido a un asistente cinematográfico:
-  // pausado, controlado y ligeramente grave.
-  u.rate=.82;
-  u.pitch=.62;
-  u.volume=1;
-
-  u.onstart=()=>{
-    document.body.classList.add("jarvis-speaking");
-    if(micStatus&&!isListening) micStatus.textContent="JARVIS está hablando...";
+    u.rate=settings.rate;
+    u.pitch=settings.pitch;
+    u.volume=1;
+    u.onend=()=>setTimeout(next,180);
+    u.onerror=()=>{
+      if(run===speechRunId){
+        document.body.classList.remove("jarvis-speaking");
+        if(micStatus&&!isListening) micStatus.textContent="Listo.";
+      }
+    };
+    window.speechSynthesis.speak(u);
   };
-  u.onend=()=>{
-    document.body.classList.remove("jarvis-speaking");
-    if(micStatus&&!isListening) micStatus.textContent="Listo.";
-  };
-  u.onerror=()=>{
-    document.body.classList.remove("jarvis-speaking");
-    if(micStatus&&!isListening) micStatus.textContent="Listo.";
-  };
-  window.speechSynthesis.speak(u);
+  next();
 }
 
-function setupSpeechRecognition(){
-  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SpeechRecognition){micStatus.textContent="El reconocimiento de voz no está disponible en este navegador.";micBtn.disabled=true;micBtn.style.opacity=".45";return;}
-  recognition=new SpeechRecognition(); recognition.lang="es-CO"; recognition.continuous=false; recognition.interimResults=false; recognition.maxAlternatives=1;
-  recognition.onstart=()=>{isListening=true;micBtn.classList.add("listening");micStatus.textContent="JARVIS está escuchando...";};
-  recognition.onresult=e=>{const result=e.results[0][0].transcript;commandInput.value=result;micStatus.textContent="Comando recibido.";processCommand(result);commandInput.value="";};
-  recognition.onerror=e=>{isListening=false;micBtn.classList.remove("listening");micStatus.textContent=e.error==="not-allowed"?"Debes permitir el acceso al micrófono.":e.error==="no-speech"?"No escuché nada. Inténtalo nuevamente.":"No pude escuchar. Inténtalo nuevamente.";};
-  recognition.onend=()=>{isListening=false;micBtn.classList.remove("listening");if(micStatus.textContent==="JARVIS está escuchando...")micStatus.textContent="Pulsa el micrófono para hablar";};
+function stopJarvisSpeech(){
+  speechRunId++;
+  if("speechSynthesis" in window) window.speechSynthesis.cancel();
+  document.body.classList.remove("jarvis-speaking");
+  if(micStatus&&!isListening) micStatus.textContent="Listo.";
 }
-function startListening(){if(!recognition){setupSpeechRecognition();if(!recognition)return;}try{recognition.start();}catch(e){console.log("Micrófono:",e);}}
-function stopListening(){if(!recognition)return;try{recognition.stop();}catch(e){console.log("Micrófono:",e);}}
-function setThinking(on){clearTimeout(busyTimer);if(on){micStatus.textContent="JARVIS está pensando...";busyTimer=setTimeout(()=>{if(!isListening)micStatus.textContent="Listo.";},900);}else if(!isListening)micStatus.textContent="Listo.";}
-function normalizeText(text){return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();}
-function loadArray(key){try{const v=JSON.parse(localStorage.getItem(key)||"[]");return Array.isArray(v)?v:[];}catch{return[];}}
-function saveArray(key,value){try{localStorage.setItem(key,JSON.stringify(value));}catch(e){console.error("Error guardando datos:",e);}}
 
 function setupVoiceControls(){
   voiceSelect=document.getElementById("voiceSelect");
   voiceStatus=document.getElementById("voiceStatus");
   const test=document.getElementById("testVoiceBtn");
+  const profile=document.getElementById("voiceProfile");
+  if(profile){
+    profile.value=getVoiceProfile();
+    profile.addEventListener("change",()=>{
+      localStorage.setItem("super_jarvis_voice_profile",profile.value);
+      updateVoiceStatus();
+      speak(profile.value==="command"?"Modo comando activado.":profile.value==="natural"?"Modo natural activado.":"Modo cinematográfico activado.");
+    });
+  }
   if(voiceSelect){
     voiceSelect.addEventListener("change",()=>{
+      stopJarvisSpeech();
       selectJarvisVoice(voiceSelect.value);
       speak("Hola. Soy JARVIS. Esta es la voz seleccionada.");
     });
   }
-  if(test) test.addEventListener("click",()=>speak("Hola. Soy JARVIS. Estoy listo para ayudarte."));
+  if(test) test.addEventListener("click",()=>speak("Hola. Soy JARVIS. Estoy listo para ayudarte. ¿En qué puedo ayudarte?"));
 }
 
 window.JARVIS={processCommand,addTask,showTasks,speak,getTasks:()=>[...tasks],getNotes:()=>[...notes],clearTasks:clearAllTasks,clearNotes};
