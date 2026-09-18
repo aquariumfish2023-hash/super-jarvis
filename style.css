@@ -597,3 +597,55 @@ footer {
     min-height: 68px;
   }
 }
+
+
+/* SELECTOR DE VOZ JARVIS */
+.voice-panel {
+  width: min(720px, 100%);
+  margin: 16px auto 0;
+  padding: 14px;
+  border: 1px solid rgba(90, 200, 255, .18);
+  border-radius: 14px;
+  background: rgba(5, 14, 24, .72);
+  box-sizing: border-box;
+}
+.voice-title {
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 9px;
+  opacity: .9;
+}
+.voice-controls {
+  display: flex;
+  gap: 9px;
+}
+.voice-select {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid rgba(90, 200, 255, .3);
+  border-radius: 10px;
+  padding: 11px 12px;
+  background: #07111b;
+  color: inherit;
+  font-size: 14px;
+}
+.test-voice-btn {
+  border: 1px solid rgba(90, 200, 255, .35);
+  border-radius: 10px;
+  padding: 0 15px;
+  background: rgba(20, 100, 145, .25);
+  color: inherit;
+  cursor: pointer;
+  font-weight: 600;
+}
+.test-voice-btn:active { transform: scale(.98); }
+.voice-status {
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: .65;
+}
+@media (max-width: 520px) {
+  .voice-controls { flex-direction: column; }
+  .test-voice-btn { min-height: 44px; }
+}

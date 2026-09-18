@@ -216,49 +216,69 @@ function setupJarvisVoice(){
 
   const loadVoices=()=>{
     availableVoices=window.speechSynthesis.getVoices()||[];
+    populateVoiceSelector();
 
-    // Perfil de voz JARVIS: prioriza voces masculinas en español.
-    // Los nombres disponibles dependen del sistema operativo/navegador.
-    const spanish=availableVoices.filter(v=>/^es(-|_)/i.test(v.lang));
-    const femaleNames=/female|woman|mujer|female|sabina|monica|monica|paulina|helena|laura|lucia|lucía|maria|maría|elena|sofia|sofía|camila|valentina|paloma|teresa|carmen/i;
-    const maleNames=/male|man|hombre|jorge|pablo|alvaro|álvaro|alonso|raul|raúl|gonzalo|diego|carlos|juan|andres|andrés|miguel|david|sergio|daniel|enrique|jorge|eduardo|roberto|hector|héctor|ruben|rubén|felipe|mateo/i;
-
-    const maleSpanish=spanish.filter(v=>maleNames.test(v.name) && !femaleNames.test(v.name));
-    const preferredMaleSpanish=[
-      /Microsoft.*(Raul|Raúl)/i,
-      /Microsoft.*(Jorge|Pablo|Gonzalo|Alvaro|Álvaro|Alonso)/i,
-      /Google.*(Espa[nñ]ol|Spanish)/i,
-      /Microsoft.*Spanish/i,
-      /male|hombre/i
-    ];
-
-    jarvisVoice=null;
-    for(const re of preferredMaleSpanish){
-      jarvisVoice=maleSpanish.find(v=>re.test(v.name));
-      if(jarvisVoice) break;
+    const saved=localStorage.getItem(VOICE_KEY);
+    if(saved){
+      const selected=availableVoices.find(v=>v.voiceURI===saved);
+      if(selected){jarvisVoice=selected; if(voiceSelect) voiceSelect.value=selected.voiceURI; return;}
     }
-    if(!jarvisVoice) jarvisVoice=maleSpanish[0] || null;
 
-    // Último recurso: una voz masculina británica, buscando el carácter de asistente.
+    // Perfil automático: primero intenta una voz masculina en español.
+    const spanish=availableVoices.filter(v=>/^es(-|_)/i.test(v.lang));
+    const femaleNames=/female|woman|mujer|sabina|monica|mónica|paulina|helena|laura|lucia|lucía|maria|maría|elena|sofia|sofía|camila|valentina|paloma|teresa|carmen/i;
+    const maleNames=/male|man|hombre|jorge|pablo|alvaro|álvaro|alonso|raul|raúl|gonzalo|diego|carlos|juan|andres|andrés|miguel|david|sergio|daniel|enrique|eduardo|roberto|hector|héctor|ruben|rubén|felipe|mateo/i;
+    const maleSpanish=spanish.filter(v=>maleNames.test(v.name) && !femaleNames.test(v.name));
+    const preferred=[/Microsoft.*(Raul|Raúl)/i,/Microsoft.*(Jorge|Pablo|Gonzalo|Alvaro|Álvaro|Alonso)/i,/Google.*(Espa[nñ]ol|Spanish)/i,/Microsoft.*Spanish/i];
+    jarvisVoice=null;
+    for(const re of preferred){jarvisVoice=maleSpanish.find(v=>re.test(v.name));if(jarvisVoice)break;}
+    if(!jarvisVoice) jarvisVoice=maleSpanish[0]||null;
     if(!jarvisVoice){
       const british=availableVoices.filter(v=>/en-GB/i.test(v.lang) && !femaleNames.test(v.name));
-      jarvisVoice=british.find(v=>maleNames.test(v.name)) || british[0] || null;
+      jarvisVoice=british.find(v=>maleNames.test(v.name))||british[0]||null;
     }
-
-    // Nunca elegimos deliberadamente una voz identificada como femenina.
-    if(!jarvisVoice){
-      const otherMale=availableVoices.find(v=>maleNames.test(v.name) && !femaleNames.test(v.name));
-      jarvisVoice=otherMale || null;
-    }
+    if(!jarvisVoice) jarvisVoice=availableVoices.find(v=>maleNames.test(v.name)&&!femaleNames.test(v.name))||null;
+    if(voiceSelect && jarvisVoice) voiceSelect.value=jarvisVoice.voiceURI;
   };
 
+  window.speechSynthesis.cancel();
   loadVoices();
   if(typeof window.speechSynthesis.onvoiceschanged!=="undefined") window.speechSynthesis.onvoiceschanged=loadVoices;
+}
+
+function populateVoiceSelector(){
+  if(!voiceSelect) return;
+  const current=voiceSelect.value;
+  voiceSelect.innerHTML="";
+  const voices=availableVoices.slice().sort((a,b)=>{
+    const aEs=/^es(-|_)/i.test(a.lang), bEs=/^es(-|_)/i.test(b.lang);
+    return Number(bEs)-Number(aEs) || a.lang.localeCompare(b.lang) || a.name.localeCompare(b.name);
+  });
+  if(!voices.length){
+    const o=document.createElement("option");o.value="";o.textContent="No hay voces disponibles";voiceSelect.appendChild(o);return;
+  }
+  voices.forEach(v=>{
+    const o=document.createElement("option");
+    o.value=v.voiceURI;
+    o.textContent=`${v.name} — ${v.lang}${v.localService?" · local":""}`;
+    voiceSelect.appendChild(o);
+  });
+  if(current && voices.some(v=>v.voiceURI===current)) voiceSelect.value=current;
+  else if(jarvisVoice) voiceSelect.value=jarvisVoice.voiceURI;
+}
+
+function selectJarvisVoice(uri){
+  const v=availableVoices.find(x=>x.voiceURI===uri);
+  if(!v) return;
+  jarvisVoice=v;
+  localStorage.setItem(VOICE_KEY,v.voiceURI);
+  if(voiceStatus) voiceStatus.textContent=`Voz seleccionada: ${v.name} (${v.lang}).`;
 }
 
 function speak(text){
   if(!("speechSynthesis" in window)) return;
   setupJarvisVoice();
+  if(voiceSelect && voiceSelect.value) selectJarvisVoice(voiceSelect.value);
   window.speechSynthesis.cancel();
 
   const u=new SpeechSynthesisUtterance(text);
@@ -305,5 +325,20 @@ function setThinking(on){clearTimeout(busyTimer);if(on){micStatus.textContent="J
 function normalizeText(text){return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();}
 function loadArray(key){try{const v=JSON.parse(localStorage.getItem(key)||"[]");return Array.isArray(v)?v:[];}catch{return[];}}
 function saveArray(key,value){try{localStorage.setItem(key,JSON.stringify(value));}catch(e){console.error("Error guardando datos:",e);}}
+
+function setupVoiceControls(){
+  voiceSelect=document.getElementById("voiceSelect");
+  voiceStatus=document.getElementById("voiceStatus");
+  const test=document.getElementById("testVoiceBtn");
+  if(voiceSelect){
+    voiceSelect.addEventListener("change",()=>{
+      selectJarvisVoice(voiceSelect.value);
+      speak("Hola. Soy JARVIS. Esta es la voz seleccionada.");
+    });
+  }
+  if(test) test.addEventListener("click",()=>speak("Hola. Soy JARVIS. Estoy listo para ayudarte."));
+}
+
+document.addEventListener("DOMContentLoaded",()=>{setupVoiceControls();setupJarvisVoice();});
 
 window.JARVIS={processCommand,addTask,showTasks,speak,getTasks:()=>[...tasks],getNotes:()=>[...notes],clearTasks:clearAllTasks,clearNotes};
