@@ -213,37 +213,83 @@ function smartFallback(command){
    ========================================================= */
 function setupJarvisVoice(){
   if(!("speechSynthesis" in window)) return;
+
   const loadVoices=()=>{
     availableVoices=window.speechSynthesis.getVoices()||[];
+
+    // Perfil de voz JARVIS: prioriza voces masculinas en español.
+    // Los nombres disponibles dependen del sistema operativo/navegador.
     const spanish=availableVoices.filter(v=>/^es(-|_)/i.test(v.lang));
-    const preferred=[
-      /Microsoft.*(Jorge|Pablo|Alvaro|Alonso)/i,
-      /Google.*Espa[nñ]ol/i,
+    const femaleNames=/female|woman|mujer|female|sabina|monica|monica|paulina|helena|laura|lucia|lucía|maria|maría|elena|sofia|sofía|camila|valentina|paloma|teresa|carmen/i;
+    const maleNames=/male|man|hombre|jorge|pablo|alvaro|álvaro|alonso|raul|raúl|gonzalo|diego|carlos|juan|andres|andrés|miguel|david|sergio|daniel|enrique|jorge|eduardo|roberto|hector|héctor|ruben|rubén|felipe|mateo/i;
+
+    const maleSpanish=spanish.filter(v=>maleNames.test(v.name) && !femaleNames.test(v.name));
+    const preferredMaleSpanish=[
+      /Microsoft.*(Raul|Raúl)/i,
+      /Microsoft.*(Jorge|Pablo|Gonzalo|Alvaro|Álvaro|Alonso)/i,
+      /Google.*(Espa[nñ]ol|Spanish)/i,
       /Microsoft.*Spanish/i,
-      /Google.*Spanish/i
+      /male|hombre/i
     ];
+
     jarvisVoice=null;
-    for(const re of preferred){ jarvisVoice=spanish.find(v=>re.test(v.name)); if(jarvisVoice) break; }
-    if(!jarvisVoice) jarvisVoice=spanish.find(v=>/male|hombre|jorge|pablo|alvaro|alonso/i.test(v.name))||spanish[0]||availableVoices.find(v=>/en-GB/i.test(v.lang));
+    for(const re of preferredMaleSpanish){
+      jarvisVoice=maleSpanish.find(v=>re.test(v.name));
+      if(jarvisVoice) break;
+    }
+    if(!jarvisVoice) jarvisVoice=maleSpanish[0] || null;
+
+    // Último recurso: una voz masculina británica, buscando el carácter de asistente.
+    if(!jarvisVoice){
+      const british=availableVoices.filter(v=>/en-GB/i.test(v.lang) && !femaleNames.test(v.name));
+      jarvisVoice=british.find(v=>maleNames.test(v.name)) || british[0] || null;
+    }
+
+    // Nunca elegimos deliberadamente una voz identificada como femenina.
+    if(!jarvisVoice){
+      const otherMale=availableVoices.find(v=>maleNames.test(v.name) && !femaleNames.test(v.name));
+      jarvisVoice=otherMale || null;
+    }
   };
+
   loadVoices();
   if(typeof window.speechSynthesis.onvoiceschanged!=="undefined") window.speechSynthesis.onvoiceschanged=loadVoices;
 }
+
 function speak(text){
   if(!("speechSynthesis" in window)) return;
   setupJarvisVoice();
   window.speechSynthesis.cancel();
+
   const u=new SpeechSynthesisUtterance(text);
-  u.lang=jarvisVoice?.lang||"es-CO";
-  if(jarvisVoice) u.voice=jarvisVoice;
-  u.rate=.86;
-  u.pitch=.82;
+  if(jarvisVoice){
+    u.voice=jarvisVoice;
+    u.lang=jarvisVoice.lang;
+  }else{
+    u.lang="es-CO";
+  }
+
+  // Ajustes para un carácter más parecido a un asistente cinematográfico:
+  // pausado, controlado y ligeramente grave.
+  u.rate=.82;
+  u.pitch=.62;
   u.volume=1;
-  u.onstart=()=>{document.body.classList.add("jarvis-speaking"); if(micStatus&&!isListening) micStatus.textContent="JARVIS está hablando...";};
-  u.onend=()=>{document.body.classList.remove("jarvis-speaking"); if(micStatus&&!isListening) micStatus.textContent="Listo.";};
-  u.onerror=()=>{document.body.classList.remove("jarvis-speaking"); if(micStatus&&!isListening) micStatus.textContent="Listo.";};
+
+  u.onstart=()=>{
+    document.body.classList.add("jarvis-speaking");
+    if(micStatus&&!isListening) micStatus.textContent="JARVIS está hablando...";
+  };
+  u.onend=()=>{
+    document.body.classList.remove("jarvis-speaking");
+    if(micStatus&&!isListening) micStatus.textContent="Listo.";
+  };
+  u.onerror=()=>{
+    document.body.classList.remove("jarvis-speaking");
+    if(micStatus&&!isListening) micStatus.textContent="Listo.";
+  };
   window.speechSynthesis.speak(u);
 }
+
 function setupSpeechRecognition(){
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SpeechRecognition){micStatus.textContent="El reconocimiento de voz no está disponible en este navegador.";micBtn.disabled=true;micBtn.style.opacity=".45";return;}
