@@ -261,9 +261,9 @@ function loadArray(key){try{const v=JSON.parse(localStorage.getItem(key)||"[]");
 function saveArray(key,value){try{localStorage.setItem(key,JSON.stringify(value));}catch(e){console.error("Error guardando datos:",e);}}
 
 /* =========================================================
-   VOZ JARVIS V7
-   Voz masculina en español + perfiles + pausas naturales.
-   Sin API externa: usa las voces disponibles en el dispositivo.
+   VOZ JARVIS — simple y estable
+   Usa únicamente la síntesis de voz disponible en el dispositivo.
+   No filtra por género ni exige una voz concreta.
    ========================================================= */
 function setupJarvisVoice(){
   if(!("speechSynthesis" in window)){
@@ -274,96 +274,57 @@ function setupJarvisVoice(){
   const loadVoices=()=>{
     availableVoices=window.speechSynthesis.getVoices()||[];
     populateVoiceSelector();
-    const voices=getSpanishMaleVoices();
     const saved=localStorage.getItem(VOICE_KEY);
-    if(saved){
-      const savedVoice=voices.find(v=>v.voiceURI===saved);
-      if(savedVoice){
-        jarvisVoice=savedVoice;
-        if(voiceSelect) voiceSelect.value=savedVoice.voiceURI;
-        updateVoiceStatus();
-        return;
-      }
-      localStorage.removeItem(VOICE_KEY);
-    }
-
-    // Preferencias sin limitar a nombres concretos: primero voces locales de español.
-    const preferred=[
-      v=>/^es-CO$/i.test(v.lang) && v.localService,
-      v=>/^es-MX$/i.test(v.lang) && v.localService,
-      v=>/^es-ES$/i.test(v.lang) && v.localService,
-      v=>/^es(?:-|_)/i.test(v.lang) && v.localService,
-      v=>/^es(?:-|_)/i.test(v.lang)
-    ];
-    jarvisVoice=null;
-    for(const rule of preferred){
-      jarvisVoice=voices.find(rule);
-      if(jarvisVoice) break;
-    }
+    const spanish=availableVoices.filter(v=>/^es(?:-|_)/i.test(v.lang));
+    const savedVoice=availableVoices.find(v=>v.voiceURI===saved);
+    jarvisVoice=savedVoice || spanish[0] || availableVoices[0] || null;
     if(voiceSelect && jarvisVoice) voiceSelect.value=jarvisVoice.voiceURI;
     updateVoiceStatus();
   };
 
   loadVoices();
-  // Chrome/Edge suelen cargar las voces después del primer acceso.
   window.speechSynthesis.onvoiceschanged=loadVoices;
-}
-
-function getSpanishMaleVoices(){
-  const femaleNames=/female|woman|mujer|sabina|monica|mónica|paulina|helena|laura|lucia|lucía|maria|maría|elena|sofia|sofía|camila|valentina|paloma|teresa|carmen|beatriz|isabel|gabriela|carolina|daniela|adriana|patricia|alejandra|veronica|verónica|silvia|rosa|natalia|ximena|jimena|fernanda|lorena|claudia|gloria|susana|angela|ángela|andrea|mariana|juliana|tatiana|diana|estefania|estefanía|paola|viviana|yaneth|yolanda/i;
-  const maleNames=/male|man|hombre|jorge|pablo|alvaro|álvaro|alonso|raul|raúl|gonzalo|diego|carlos|juan|andres|andrés|miguel|david|sergio|daniel|enrique|eduardo|roberto|hector|héctor|ruben|rubén|felipe|mateo|sebastian|sebastián|alejandro|cristian|oscar|óscar|manuel|francisco|rafael|gabriel|javier|vicente|martin|martín|luis|fernando|ricardo|samuel|nicolas|nicolás|tomas|tomás|esteban|bruno|marcos|ivan|iván|adrian|adrián|emilio|hugo|arturo|cesar|césar|ignacio|joaquin|joaquín|maximiliano|ramiro|santiago/i;
-  return availableVoices.filter(v=>/^es(?:-|_)/i.test(v.lang) && !femaleNames.test(v.name) && maleNames.test(v.name));
 }
 
 function populateVoiceSelector(){
   if(!voiceSelect) return;
-  const voices=getSpanishMaleVoices().slice().sort((a,b)=>a.lang.localeCompare(b.lang)||a.name.localeCompare(b.name));
-  const previous=voiceSelect.value;
+  const voices=availableVoices
+    .filter(v=>/^es(?:-|_)/i.test(v.lang))
+    .slice()
+    .sort((a,b)=>a.lang.localeCompare(b.lang)||a.name.localeCompare(b.name));
+  const list=voices.length?voices:availableVoices;
   voiceSelect.innerHTML="";
-  if(!voices.length){
+  if(!list.length){
     const o=document.createElement("option");
     o.value="";
-    o.textContent="No hay voces masculinas en español disponibles";
+    o.textContent="Voz del dispositivo";
     voiceSelect.appendChild(o);
-    if(voiceStatus) voiceStatus.textContent="No se detectó una voz masculina en español en este dispositivo.";
     return;
   }
-  voices.forEach(v=>{
+  list.forEach(v=>{
     const o=document.createElement("option");
     o.value=v.voiceURI;
-    o.textContent=`${v.name} — ${v.lang}${v.localService?" · local":""}`;
+    o.textContent=`${v.name} — ${v.lang}`;
     voiceSelect.appendChild(o);
   });
-  if(previous && voices.some(v=>v.voiceURI===previous)) voiceSelect.value=previous;
-  else if(jarvisVoice && voices.some(v=>v.voiceURI===jarvisVoice.voiceURI)) voiceSelect.value=jarvisVoice.voiceURI;
-  else if(voices[0]) voiceSelect.value=voices[0].voiceURI;
+  if(jarvisVoice && list.some(v=>v.voiceURI===jarvisVoice.voiceURI)){
+    voiceSelect.value=jarvisVoice.voiceURI;
+  }
 }
 
 function selectJarvisVoice(uri){
-  const v=availableVoices.find(x=>x.voiceURI===uri && /^es(?:-|_)/i.test(x.lang));
-  if(!v || !getSpanishMaleVoices().some(x=>x.voiceURI===v.voiceURI)) return;
+  const v=availableVoices.find(x=>x.voiceURI===uri);
+  if(!v) return;
   jarvisVoice=v;
   localStorage.setItem(VOICE_KEY,v.voiceURI);
   updateVoiceStatus();
 }
 
-function getVoiceProfile(){
-  return localStorage.getItem("super_jarvis_voice_profile")||"cinematic";
-}
-
-function getVoiceSettings(){
-  const profile=getVoiceProfile();
-  if(profile==="natural") return {rate:.90,pitch:.78};
-  if(profile==="command") return {rate:.84,pitch:.60};
-  return {rate:.78,pitch:.52}; // Cinemático
-}
-
 function updateVoiceStatus(){
   if(!voiceStatus) return;
-  const profileNames={cinematic:"Cinemático",natural:"Natural",command:"Comando"};
   voiceStatus.textContent=jarvisVoice
-    ? `Voz: ${jarvisVoice.name} (${jarvisVoice.lang}) · Perfil: ${profileNames[getVoiceProfile()]||"Cinemático"}.`
-    : `Perfil: ${profileNames[getVoiceProfile()]||"Cinemático"}.`;
+    ? `Voz: ${jarvisVoice.name} (${jarvisVoice.lang}).`
+    : "Voz del dispositivo.";
 }
 
 function splitSpeech(text){
@@ -374,14 +335,13 @@ let speechRunId=0;
 function speak(text){
   if(!("speechSynthesis" in window) || !text) return;
   if(!jarvisVoice){
-    const voices=getSpanishMaleVoices();
-    if(voices.length) jarvisVoice=voices[0];
+    const voices=window.speechSynthesis.getVoices()||[];
+    jarvisVoice=voices.find(v=>/^es(?:-|_)/i.test(v.lang))||voices[0]||null;
   }
   if(!jarvisVoice) return;
 
   const run=++speechRunId;
   window.speechSynthesis.cancel();
-  const settings=getVoiceSettings();
   const parts=splitSpeech(text);
   let index=0;
 
@@ -398,11 +358,11 @@ function speak(text){
     }
     const u=new SpeechSynthesisUtterance(parts[index++]);
     u.voice=jarvisVoice;
-    u.lang=jarvisVoice.lang;
-    u.rate=settings.rate;
-    u.pitch=settings.pitch;
+    u.lang=jarvisVoice.lang || "es-CO";
+    u.rate=.88;
+    u.pitch=1;
     u.volume=1;
-    u.onend=()=>setTimeout(next,180);
+    u.onend=()=>setTimeout(next,160);
     u.onerror=()=>{
       if(run===speechRunId){
         document.body.classList.remove("jarvis-speaking");
@@ -425,15 +385,7 @@ function setupVoiceControls(){
   voiceSelect=document.getElementById("voiceSelect");
   voiceStatus=document.getElementById("voiceStatus");
   const test=document.getElementById("testVoiceBtn");
-  const profile=document.getElementById("voiceProfile");
-  if(profile){
-    profile.value=getVoiceProfile();
-    profile.addEventListener("change",()=>{
-      localStorage.setItem("super_jarvis_voice_profile",profile.value);
-      updateVoiceStatus();
-      speak(profile.value==="command"?"Modo comando activado.":profile.value==="natural"?"Modo natural activado.":"Modo cinematográfico activado.");
-    });
-  }
+
   if(voiceSelect){
     voiceSelect.addEventListener("change",()=>{
       stopJarvisSpeech();
@@ -441,7 +393,7 @@ function setupVoiceControls(){
       speak("Hola. Soy JARVIS. Esta es la voz seleccionada.");
     });
   }
-  if(test) test.addEventListener("click",()=>speak("Hola. Soy JARVIS. Estoy listo para ayudarte. ¿En qué puedo ayudarte?"));
+  if(test) test.addEventListener("click",()=>speak("Hola. Soy JARVIS. Estoy listo para ayudarte."));
 }
 
 window.JARVIS={processCommand,addTask,showTasks,speak,getTasks:()=>[...tasks],getNotes:()=>[...notes],clearTasks:clearAllTasks,clearNotes};
