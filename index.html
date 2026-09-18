@@ -1,0 +1,197 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width,
+                   initial-scale=1.0,
+                   viewport-fit=cover">
+
+    <meta name="theme-color" content="#07111f">
+
+    <meta name="description"
+          content="Super JARVIS - Asistente personal inteligente">
+
+    <title>Super JARVIS</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="app">
+
+        <!-- ENCABEZADO -->
+        <header class="topbar">
+
+            <div class="brand">
+                <div class="brand-icon">J</div>
+
+                <div>
+                    <h1>SUPER JARVIS</h1>
+                    <span>Asistente personal</span>
+                </div>
+            </div>
+
+            <div class="status">
+                <span class="status-dot"></span>
+                <span id="statusText">En línea</span>
+            </div>
+
+        </header>
+
+
+        <!-- NÚCLEO -->
+        <main>
+
+            <section class="core-section">
+
+                <div class="core-ring">
+
+                    <div class="core">
+                        <div class="core-letter">J</div>
+                        <div class="core-label" id="coreLabel">
+                            LISTO
+                        </div>
+                    </div>
+
+                </div>
+
+                <h2 id="greeting">
+                    Hola, soy JARVIS
+                </h2>
+
+                <p id="subtitle">
+                    Tu asistente personal está listo.
+                </p>
+
+            </section>
+
+
+            <!-- CONVERSACIÓN -->
+            <section class="chat-container">
+
+                <div id="chat" class="chat">
+
+                    <div class="message jarvis-message">
+                        <div class="message-avatar">J</div>
+
+                        <div class="message-content">
+                            <strong>JARVIS</strong>
+                            <p>
+                                Buenos días. Estoy listo para ayudarte.
+                                Puedes hablar conmigo usando el botón del micrófono.
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- COMANDOS RÁPIDOS -->
+            <section class="quick-actions">
+
+                <button class="quick-btn" data-command="¿Qué hora es?">
+                    <span>🕐</span>
+                    <small>Hora</small>
+                </button>
+
+                <button class="quick-btn" data-command="¿Qué fecha es?">
+                    <span>📅</span>
+                    <small>Fecha</small>
+                </button>
+
+                <button class="quick-btn" data-command="Muéstrame mis tareas">
+                    <span>📋</span>
+                    <small>Tareas</small>
+                </button>
+
+                <button class="quick-btn" data-command="Ayuda">
+                    <span>❓</span>
+                    <small>Ayuda</small>
+                </button>
+
+            </section>
+
+
+            <!-- ENTRADA DE TEXTO -->
+            <section class="input-area">
+
+                <input
+                    type="text"
+                    id="textInput"
+                    placeholder="Escribe un comando..."
+                    autocomplete="off"
+                >
+
+                <button
+                    id="sendButton"
+                    class="send-button"
+                    aria-label="Enviar">
+                    ➤
+                </button>
+
+            </section>
+
+
+            <!-- MICRÓFONO -->
+            <section class="microphone-area">
+
+                <button
+                    id="micButton"
+                    class="mic-button"
+                    aria-label="Hablar con JARVIS">
+
+                    <span class="mic-icon">🎙️</span>
+
+                </button>
+
+                <p id="micStatus">
+                    Toca para hablar con JARVIS
+                </p>
+
+            </section>
+
+
+            <!-- TAREAS -->
+            <section class="tasks-panel">
+
+                <div class="panel-title">
+                    <span>📋</span>
+                    <h3>Mis tareas</h3>
+                </div>
+
+                <div id="tasksList" class="tasks-list">
+                    <p class="empty-tasks">
+                        No tienes tareas pendientes.
+                    </p>
+                </div>
+
+            </section>
+
+        </main>
+
+
+        <!-- PIE -->
+        <footer>
+
+            <span>SUPER JARVIS V1</span>
+
+            <span>•</span>
+
+            <span>Asistente personal</span>
+
+        </footer>
+
+    </div>
+
+
+    <script src="jarvis.js"></script>
+
+</body>
+</html>
+```
