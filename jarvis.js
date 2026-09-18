@@ -1,985 +1,827 @@
-```javascript
 /* =========================================================
    SUPER JARVIS V1
-   Asistente personal
-========================================================= */
+   Asistente personal - versión corregida
+   ========================================================= */
 
+"use strict";
 
 /* =========================================================
    CONFIGURACIÓN
-========================================================= */
+   ========================================================= */
 
-const STORAGE_KEY = "super_jarvis_v1_tasks";
+const TASKS_KEY = "super_jarvis_v1_tasks";
 
-let tasks =
-    JSON.parse(
-        localStorage.getItem(STORAGE_KEY) || "[]"
-    );
+let tasks = loadTasks();
 
 let recognition = null;
-
 let isListening = false;
 
 
 /* =========================================================
    ELEMENTOS
-========================================================= */
+   ========================================================= */
 
-const chat =
-    document.getElementById("chat");
+const chat = document.getElementById("chat");
+const commandInput = document.getElementById("commandInput");
+const sendBtn = document.getElementById("sendBtn");
+const micBtn = document.getElementById("micBtn");
+const micStatus = document.getElementById("micStatus");
+const tasksList = document.getElementById("tasksList");
+const greeting = document.getElementById("greeting");
 
-const textInput =
-    document.getElementById("textInput");
-
-const sendButton =
-    document.getElementById("sendButton");
-
-const micButton =
-    document.getElementById("micButton");
-
-const micStatus =
-    document.getElementById("micStatus");
-
-const coreLabel =
-    document.getElementById("coreLabel");
-
-const statusText =
-    document.getElementById("statusText");
-
-const tasksList =
-    document.getElementById("tasksList");
-
-const greeting =
-    document.getElementById("greeting");
-
-const subtitle =
-    document.getElementById("subtitle");
+const btnTime = document.getElementById("btnTime");
+const btnDate = document.getElementById("btnDate");
+const btnTasks = document.getElementById("btnTasks");
+const btnHelp = document.getElementById("btnHelp");
 
 
 /* =========================================================
    INICIO
-========================================================= */
+   ========================================================= */
 
-document.addEventListener(
-    "DOMContentLoaded",
-    () => {
+document.addEventListener("DOMContentLoaded", () => {
 
-        initializeSpeech();
+  updateGreeting();
+  renderTasks();
+  setupSpeechRecognition();
 
-        renderTasks();
+  /* Botón enviar */
+  sendBtn.addEventListener("click", () => {
+    submitCommand();
+  });
 
-        updateGreeting();
+  /* Enter en el cuadro de texto */
+  commandInput.addEventListener("keydown", (event) => {
 
-        setTimeout(() => {
-
-            speak(
-                "Sistema JARVIS iniciado. Estoy listo."
-            );
-
-        }, 900);
-
+    if (event.key === "Enter") {
+      event.preventDefault();
+      submitCommand();
     }
-);
+
+  });
+
+  /* Botones rápidos */
+
+  btnTime.addEventListener("click", () => {
+    processCommand("¿Qué hora es?");
+  });
+
+  btnDate.addEventListener("click", () => {
+    processCommand("¿Qué fecha es hoy?");
+  });
+
+  btnTasks.addEventListener("click", () => {
+    processCommand("muéstrame mis tareas");
+  });
+
+  btnHelp.addEventListener("click", () => {
+    processCommand("ayuda");
+  });
+
+  /* Micrófono */
+
+  micBtn.addEventListener("click", () => {
+
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+
+  });
+
+});
 
 
 /* =========================================================
    SALUDO
-========================================================= */
+   ========================================================= */
 
 function updateGreeting() {
 
-    const hour =
-        new Date().getHours();
+  const hour = new Date().getHours();
 
-    if (hour < 12) {
+  let text = "Buenos días. Estoy listo para ayudarte.";
 
-        greeting.textContent =
-            "Buenos días";
+  if (hour >= 12 && hour < 19) {
+    text = "Buenas tardes. Estoy listo para ayudarte.";
+  }
 
-    } else if (hour < 18) {
+  if (hour >= 19 || hour < 5) {
+    text = "Buenas noches. Estoy listo para ayudarte.";
+  }
 
-        greeting.textContent =
-            "Buenas tardes";
-
-    } else {
-
-        greeting.textContent =
-            "Buenas noches";
-
-    }
-
-    subtitle.textContent =
-        "Tu asistente personal está listo.";
+  greeting.textContent = text;
 
 }
 
 
 /* =========================================================
-   RECONOCIMIENTO DE VOZ
-========================================================= */
+   COMANDO ESCRITO
+   ========================================================= */
 
-function initializeSpeech() {
+function submitCommand() {
 
-    const SpeechRecognition =
-        window.SpeechRecognition ||
-        window.webkitSpeechRecognition;
+  const command = commandInput.value.trim();
 
-    if (!SpeechRecognition) {
+  if (!command) {
+    return;
+  }
 
-        micButton.disabled = true;
+  processCommand(command);
 
-        micStatus.textContent =
-            "El navegador no permite reconocimiento de voz.";
-
-        return;
-
-    }
-
-    recognition =
-        new SpeechRecognition();
-
-    recognition.lang = "es-CO";
-
-    recognition.continuous = false;
-
-    recognition.interimResults = false;
-
-    recognition.maxAlternatives = 1;
-
-
-    recognition.onstart = () => {
-
-        isListening = true;
-
-        micButton.classList.add(
-            "listening"
-        );
-
-        micStatus.textContent =
-            "Escuchando...";
-
-        coreLabel.textContent =
-            "ESCUCHANDO";
-
-        statusText.textContent =
-            "Escuchando";
-
-    };
-
-
-    recognition.onresult = event => {
-
-        const transcript =
-            event.results[0][0].transcript;
-
-        textInput.value =
-            transcript;
-
-        addUserMessage(
-            transcript
-        );
-
-        processCommand(
-            transcript
-        );
-
-    };
-
-
-    recognition.onerror = event => {
-
-        console.log(
-            "Error de reconocimiento:",
-            event.error
-        );
-
-        if (
-            event.error ===
-            "not-allowed"
-        ) {
-
-            micStatus.textContent =
-                "Permite el micrófono para usar JARVIS.";
-
-        } else {
-
-            micStatus.textContent =
-                "No pude escuchar. Inténtalo nuevamente.";
-
-        }
-
-    };
-
-
-    recognition.onend = () => {
-
-        isListening = false;
-
-        micButton.classList.remove(
-            "listening"
-        );
-
-        micStatus.textContent =
-            "Toca para hablar con JARVIS";
-
-        coreLabel.textContent =
-            "LISTO";
-
-        statusText.textContent =
-            "En línea";
-
-    };
+  commandInput.value = "";
+  commandInput.focus();
 
 }
-
-
-/* =========================================================
-   BOTÓN MICRÓFONO
-========================================================= */
-
-micButton.addEventListener(
-    "click",
-    () => {
-
-        if (!recognition) {
-
-            addJarvisMessage(
-                "El reconocimiento de voz no está disponible en este navegador."
-            );
-
-            return;
-
-        }
-
-        if (isListening) {
-
-            recognition.stop();
-
-            return;
-
-        }
-
-        try {
-
-            recognition.start();
-
-        } catch (error) {
-
-            console.log(error);
-
-        }
-
-    }
-);
-
-
-/* =========================================================
-   TEXTO
-========================================================= */
-
-sendButton.addEventListener(
-    "click",
-    sendTextCommand
-);
-
-
-textInput.addEventListener(
-    "keydown",
-    event => {
-
-        if (
-            event.key ===
-            "Enter"
-        ) {
-
-            sendTextCommand();
-
-        }
-
-    }
-);
-
-
-function sendTextCommand() {
-
-    const text =
-        textInput.value.trim();
-
-    if (!text) return;
-
-    addUserMessage(text);
-
-    textInput.value = "";
-
-    processCommand(text);
-
-}
-
-
-/* =========================================================
-   BOTONES RÁPIDOS
-========================================================= */
-
-document
-    .querySelectorAll(".quick-btn")
-    .forEach(button => {
-
-        button.addEventListener(
-            "click",
-            () => {
-
-                const command =
-                    button.dataset.command;
-
-                addUserMessage(
-                    command
-                );
-
-                processCommand(
-                    command
-                );
-
-            }
-        );
-
-    });
 
 
 /* =========================================================
    PROCESADOR PRINCIPAL
-========================================================= */
+   ========================================================= */
 
 function processCommand(command) {
 
-    const original =
-        command.trim();
+  const originalCommand = command.trim();
 
-    const text =
-        normalize(original);
+  if (!originalCommand) {
+    return;
+  }
 
+  addMessage(originalCommand, "user");
 
-    /* -------------------------
-       HORA
-    ------------------------- */
+  const text = normalizeText(originalCommand);
 
-    if (
-        text.includes("que hora") ||
-        text.includes("hora es")
-    ) {
-
-        const now =
-            new Date();
-
-        const time =
-            now.toLocaleTimeString(
-                "es-CO",
-                {
-                    hour: "2-digit",
-                    minute: "2-digit"
-                }
-            );
-
-        respond(
-            `Son las ${time}.`
-        );
-
-        return;
-    }
+  let response = "";
 
 
-    /* -------------------------
-       FECHA
-    ------------------------- */
+  /* SALUDOS */
 
-    if (
-        text.includes("que fecha") ||
-        text.includes("fecha es") ||
-        text.includes("que dia")
-    ) {
+  if (
+    text.includes("hola") ||
+    text.includes("buenos dias") ||
+    text.includes("buenas tardes") ||
+    text.includes("buenas noches")
+  ) {
 
-        const date =
-            new Date();
+    response = getGreetingResponse();
 
-        const formatted =
-            date.toLocaleDateString(
-                "es-CO",
-                {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric"
-                }
-            );
-
-        respond(
-            `Hoy es ${formatted}.`
-        );
-
-        return;
-    }
+  }
 
 
-    /* -------------------------
-       SALUDO
-    ------------------------- */
+  /* HORA */
 
-    if (
-        text === "hola" ||
-        text.includes("hola jarvis") ||
-        text.includes("buenos dias") ||
-        text.includes("buenas tardes") ||
-        text.includes("buenas noches")
-    ) {
+  else if (
+    text.includes("que hora es") ||
+    text.includes("dime la hora") ||
+    text === "hora"
+  ) {
 
-        respond(
-            "Hola. Me alegra escucharte. ¿En qué puedo ayudarte?"
-        );
+    response = getTime();
 
-        return;
-    }
+  }
 
 
-    /* -------------------------
-       NOMBRE
-    ------------------------- */
+  /* FECHA */
 
-    if (
-        text.includes("como te llamas") ||
-        text.includes("quien eres")
-    ) {
+  else if (
+    text.includes("que fecha es") ||
+    text.includes("que dia es") ||
+    text.includes("dime la fecha") ||
+    text === "fecha"
+  ) {
 
-        respond(
-            "Soy JARVIS, tu asistente personal."
-        );
+    response = getDate();
 
-        return;
-    }
+  }
 
 
-    /* -------------------------
-       TAREAS
-    ------------------------- */
+  /* IDENTIDAD */
 
-    if (
-        text.includes("mis tareas") ||
-        text.includes("mostrar tareas") ||
-        text.includes("ver tareas")
-    ) {
+  else if (
+    text.includes("quien eres") ||
+    text.includes("como te llamas") ||
+    text.includes("tu nombre")
+  ) {
 
-        showTasks();
+    response =
+      "Soy Super JARVIS, tu asistente personal. " +
+      "Estoy aquí para ayudarte a organizar tu día.";
 
-        return;
-    }
-
-
-    /* -------------------------
-       AGREGAR TAREA
-    ------------------------- */
-
-    if (
-        text.startsWith("agrega tarea") ||
-        text.startsWith("añade tarea") ||
-        text.startsWith("crear tarea") ||
-        text.startsWith("recuerdame")
-    ) {
-
-        let taskText =
-            original
-                .replace(
-                    /^agrega tarea/i,
-                    ""
-                )
-                .replace(
-                    /^añade tarea/i,
-                    ""
-                )
-                .replace(
-                    /^crear tarea/i,
-                    ""
-                )
-                .replace(
-                    /^recuérdame/i,
-                    ""
-                )
-                .trim();
-
-        if (!taskText) {
-
-            respond(
-                "Claro. Dime qué quieres que recuerde."
-            );
-
-            return;
-
-        }
-
-        addTask(taskText);
-
-        return;
-
-    }
+  }
 
 
-    /* -------------------------
-       LIMPIAR TAREAS
-    ------------------------- */
+  /* TAREAS */
 
-    if (
-        text.includes(
-            "borrar todas las tareas"
-        )
-    ) {
+  else if (
+    text.includes("mis tareas") ||
+    text.includes("ver tareas") ||
+    text.includes("mostrar tareas") ||
+    text.includes("muestrame mis tareas") ||
+    text.includes("que tengo pendiente")
+  ) {
 
-        tasks = [];
+    response = showTasks();
 
-        saveTasks();
-
-        renderTasks();
-
-        respond(
-            "He eliminado todas las tareas."
-        );
-
-        return;
-
-    }
+  }
 
 
-    /* -------------------------
-       AYUDA
-    ------------------------- */
+  /* BORRAR TODAS LAS TAREAS */
 
-    if (
-        text === "ayuda" ||
-        text.includes("que puedes hacer") ||
-        text.includes("comandos")
-    ) {
+  else if (
+    text.includes("borra todas las tareas") ||
+    text.includes("elimina todas las tareas") ||
+    text.includes("borrar todas las tareas")
+  ) {
 
-        respond(
-`Por ahora puedo:
+    tasks = [];
+    saveTasks();
+    renderTasks();
 
-• Decirte la hora.
-• Decirte la fecha.
-• Crear tareas.
-• Mostrar tus tareas.
-• Eliminar todas las tareas.
-• Responder saludos.
+    response = "He eliminado todas las tareas.";
 
-Y esto apenas es la V1. Podemos seguir ampliando mis capacidades.`
-        );
-
-        return;
-
-    }
+  }
 
 
-    /* -------------------------
-       RESPUESTA GENERAL
-    ------------------------- */
+  /* AYUDA */
 
-    respond(
-        `He recibido: "${original}". Esta función todavía está en desarrollo. Podemos enseñarme nuevas acciones en las siguientes versiones.`
-    );
+  else if (
+    text === "ayuda" ||
+    text.includes("que puedes hacer") ||
+    text.includes("comandos")
+  ) {
+
+    response =
+      "Puedo decirte la hora y la fecha, guardar tareas, " +
+      "mostrar tus tareas, saludarte y recibir comandos por voz.";
+
+  }
+
+
+  /* AGREGAR TAREA */
+
+  else if (
+    text.includes("agrega tarea") ||
+    text.includes("añade tarea") ||
+    text.includes("anade tarea") ||
+    text.includes("crear tarea") ||
+    text.includes("crea tarea") ||
+    text.includes("nueva tarea") ||
+    text.includes("recuérdame") ||
+    text.includes("recuerdame") ||
+    text.startsWith("tarea ")
+  ) {
+
+    response = createTaskFromCommand(originalCommand);
+
+  }
+
+
+  /* COMANDO DESCONOCIDO */
+
+  else {
+
+    response =
+      "Entendido. Todavía estoy aprendiendo ese comando. " +
+      "Prueba diciendo: ¿qué hora es?, ¿qué fecha es?, " +
+      "mis tareas, o recuérdame comprar comida para los peces.";
+
+  }
+
+
+  addMessage(response, "jarvis");
+  speak(response);
 
 }
 
 
 /* =========================================================
-   NORMALIZAR TEXTO
-========================================================= */
+   RESPUESTAS BÁSICAS
+   ========================================================= */
 
-function normalize(text) {
+function getGreetingResponse() {
 
-    return text
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(
-            /[\u0300-\u036f]/g,
-            ""
-        );
+  const hour = new Date().getHours();
 
-}
+  if (hour >= 5 && hour < 12) {
+    return "Buenos días. ¿En qué puedo ayudarte?";
+  }
 
+  if (hour >= 12 && hour < 19) {
+    return "Buenas tardes. ¿En qué puedo ayudarte?";
+  }
 
-/* =========================================================
-   RESPONDER
-========================================================= */
-
-function respond(message) {
-
-    addJarvisMessage(
-        message
-    );
-
-    speak(message);
+  return "Buenas noches. ¿En qué puedo ayudarte?";
 
 }
 
 
-/* =========================================================
-   VOZ
-========================================================= */
+function getTime() {
 
-function speak(text) {
+  const now = new Date();
 
-    if (
-        !("speechSynthesis" in window)
-    ) {
-
-        return;
-
-    }
-
-    window.speechSynthesis.cancel();
-
-    const utterance =
-        new SpeechSynthesisUtterance(
-            text
-        );
-
-    utterance.lang = "es-CO";
-
-    utterance.rate = 0.95;
-
-    utterance.pitch = 0.9;
-
-    utterance.volume = 1;
-
-    window.speechSynthesis.speak(
-        utterance
-    );
+  return "Son las " +
+    now.toLocaleTimeString("es-CO", {
+      hour: "2-digit",
+      minute: "2-digit"
+    }) + ".";
 
 }
 
 
-/* =========================================================
-   MENSAJE JARVIS
-========================================================= */
+function getDate() {
 
-function addJarvisMessage(message) {
+  const now = new Date();
 
-    const element =
-        document.createElement(
-            "div"
-        );
-
-    element.className =
-        "message jarvis-message";
-
-    element.innerHTML = `
-        <div class="message-avatar">
-            J
-        </div>
-
-        <div class="message-content">
-
-            <strong>JARVIS</strong>
-
-            <p></p>
-
-        </div>
-    `;
-
-    element
-        .querySelector("p")
-        .textContent = message;
-
-    chat.appendChild(
-        element
-    );
-
-    scrollChat();
-
-}
-
-
-/* =========================================================
-   MENSAJE USUARIO
-========================================================= */
-
-function addUserMessage(message) {
-
-    const element =
-        document.createElement(
-            "div"
-        );
-
-    element.className =
-        "message user-message";
-
-    element.innerHTML = `
-        <div class="message-avatar">
-            U
-        </div>
-
-        <div class="message-content">
-
-            <strong>TÚ</strong>
-
-            <p></p>
-
-        </div>
-    `;
-
-    element
-        .querySelector("p")
-        .textContent = message;
-
-    chat.appendChild(
-        element
-    );
-
-    scrollChat();
-
-}
-
-
-/* =========================================================
-   SCROLL CHAT
-========================================================= */
-
-function scrollChat() {
-
-    chat.scrollTop =
-        chat.scrollHeight;
+  return "Hoy es " +
+    now.toLocaleDateString("es-CO", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    }) + ".";
 
 }
 
 
 /* =========================================================
    TAREAS
-========================================================= */
+   ========================================================= */
+
+function createTaskFromCommand(command) {
+
+  let taskText = command;
+
+  const patterns = [
+    /recuérdame/i,
+    /recuerdame/i,
+    /agrega tarea/i,
+    /añade tarea/i,
+    /anade tarea/i,
+    /crear tarea/i,
+    /crea tarea/i,
+    /nueva tarea/i,
+    /^tarea/i
+  ];
+
+  for (const pattern of patterns) {
+    taskText = taskText.replace(pattern, "");
+  }
+
+  taskText = taskText.trim();
+
+  taskText = taskText.replace(
+    /^(que|de|para)\s+/i,
+    ""
+  ).trim();
+
+  if (!taskText) {
+
+    return "Claro. ¿Qué tarea quieres que recuerde?";
+
+  }
+
+  addTask(taskText);
+
+  return `He guardado la tarea: ${taskText}.`;
+
+}
+
 
 function addTask(text) {
 
-    const task = {
+  const task = {
+    id: Date.now(),
+    text: text,
+    completed: false,
+    createdAt: new Date().toISOString()
+  };
 
-        id:
-            Date.now(),
+  tasks.push(task);
 
-        text:
-            text,
-
-        completed:
-            false,
-
-        created:
-            new Date().toISOString()
-
-    };
-
-    tasks.push(task);
-
-    saveTasks();
-
-    renderTasks();
-
-    respond(
-        `Listo. He agregado la tarea: ${text}`
-    );
+  saveTasks();
+  renderTasks();
 
 }
 
-
-/* =========================================================
-   GUARDAR TAREAS
-========================================================= */
-
-function saveTasks() {
-
-    localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(tasks)
-    );
-
-}
-
-
-/* =========================================================
-   MOSTRAR TAREAS
-========================================================= */
 
 function showTasks() {
 
-    if (!tasks.length) {
+  if (tasks.length === 0) {
 
-        respond(
-            "No tienes tareas pendientes."
-        );
+    return "No tienes tareas pendientes.";
 
-        return;
+  }
 
-    }
+  const pending = tasks.filter(task => !task.completed);
 
-    const pending =
-        tasks.filter(
-            task =>
-                !task.completed
-        );
+  if (pending.length === 0) {
 
-    if (!pending.length) {
+    return "No tienes tareas pendientes. Todas están completadas.";
 
-        respond(
-            "No tienes tareas pendientes. Todas están completadas."
-        );
+  }
 
-        return;
+  const list = pending
+    .map((task, index) => `${index + 1}. ${task.text}`)
+    .join(". ");
 
-    }
-
-    let message =
-        "Tienes estas tareas pendientes:\n";
-
-    pending.forEach(
-        (task, index) => {
-
-            message +=
-                `${index + 1}. ${task.text}\n`;
-
-        }
-    );
-
-    respond(message);
+  return `Tienes ${pending.length} tarea(s) pendiente(s): ${list}.`;
 
 }
 
 
 /* =========================================================
    RENDERIZAR TAREAS
-========================================================= */
+   ========================================================= */
 
 function renderTasks() {
 
-    tasksList.innerHTML = "";
+  if (!tasksList) {
+    return;
+  }
 
-    if (!tasks.length) {
+  if (tasks.length === 0) {
 
-        tasksList.innerHTML = `
-            <p class="empty-tasks">
-                No tienes tareas pendientes.
-            </p>
-        `;
+    tasksList.innerHTML =
+      '<div class="empty-tasks">No tienes tareas pendientes.</div>';
 
-        return;
+    return;
 
-    }
+  }
 
-    tasks.forEach(task => {
+  tasksList.innerHTML = "";
 
-        const item =
-            document.createElement(
-                "div"
-            );
+  tasks.forEach(task => {
 
-        item.className =
-            "task";
+    const taskElement = document.createElement("div");
 
-        item.innerHTML = `
+    taskElement.className =
+      "task" + (task.completed ? " completed" : "");
 
-            <input
-                type="checkbox"
-                class="task-checkbox"
-                ${task.completed ? "checked" : ""}
-            >
+    /* Checkbox */
 
-            <span class="task-text">
-                ${escapeHtml(task.text)}
-            </span>
+    const checkbox = document.createElement("input");
 
-            <button
-                class="task-delete"
-                title="Eliminar tarea">
-                ✕
-            </button>
+    checkbox.type = "checkbox";
+    checkbox.className = "task-checkbox";
+    checkbox.checked = task.completed;
 
-        `;
+    checkbox.addEventListener("change", () => {
 
+      task.completed = checkbox.checked;
 
-        const checkbox =
-            item.querySelector(
-                ".task-checkbox"
-            );
-
-        checkbox.addEventListener(
-            "change",
-            () => {
-
-                task.completed =
-                    checkbox.checked;
-
-                saveTasks();
-
-                renderTasks();
-
-            }
-        );
-
-
-        const deleteButton =
-            item.querySelector(
-                ".task-delete"
-            );
-
-        deleteButton.addEventListener(
-            "click",
-            () => {
-
-                tasks =
-                    tasks.filter(
-                        current =>
-                            current.id !==
-                            task.id
-                    );
-
-                saveTasks();
-
-                renderTasks();
-
-            }
-        );
-
-
-        tasksList.appendChild(
-            item
-        );
+      saveTasks();
+      renderTasks();
 
     });
 
+
+    /* Texto */
+
+    const textElement = document.createElement("div");
+
+    textElement.className = "task-text";
+    textElement.textContent = task.text;
+
+
+    /* Eliminar */
+
+    const deleteButton = document.createElement("button");
+
+    deleteButton.className = "delete-task";
+    deleteButton.textContent = "✕";
+    deleteButton.title = "Eliminar tarea";
+
+    deleteButton.addEventListener("click", () => {
+
+      tasks = tasks.filter(item => item.id !== task.id);
+
+      saveTasks();
+      renderTasks();
+
+    });
+
+
+    taskElement.appendChild(checkbox);
+    taskElement.appendChild(textElement);
+    taskElement.appendChild(deleteButton);
+
+    tasksList.appendChild(taskElement);
+
+  });
+
 }
 
 
 /* =========================================================
-   SEGURIDAD HTML
-========================================================= */
+   LOCAL STORAGE
+   ========================================================= */
 
-function escapeHtml(text) {
+function loadTasks() {
 
-    const div =
-        document.createElement(
-            "div"
-        );
+  try {
 
-    div.textContent =
-        text;
+    const saved = localStorage.getItem(TASKS_KEY);
 
-    return div.innerHTML;
+    if (!saved) {
+      return [];
+    }
+
+    const parsed = JSON.parse(saved);
+
+    return Array.isArray(parsed) ? parsed : [];
+
+  } catch (error) {
+
+    console.error("Error cargando tareas:", error);
+
+    return [];
+
+  }
+
+}
+
+
+function saveTasks() {
+
+  try {
+
+    localStorage.setItem(
+      TASKS_KEY,
+      JSON.stringify(tasks)
+    );
+
+  } catch (error) {
+
+    console.error("Error guardando tareas:", error);
+
+  }
 
 }
 
 
 /* =========================================================
-   EXPONER PARA PRUEBAS
-========================================================= */
+   CHAT
+   ========================================================= */
+
+function addMessage(text, sender) {
+
+  if (!chat) {
+    return;
+  }
+
+  const message = document.createElement("div");
+
+  message.className =
+    sender === "user"
+      ? "message user-message"
+      : "message jarvis-message";
+
+  if (sender === "jarvis") {
+
+    message.innerHTML =
+      '<div class="message-name">JARVIS</div>';
+
+    const content = document.createElement("div");
+    content.textContent = text;
+
+    message.appendChild(content);
+
+  } else {
+
+    message.textContent = text;
+
+  }
+
+  chat.appendChild(message);
+
+  message.scrollIntoView({
+    behavior: "smooth",
+    block: "nearest"
+  });
+
+}
+
+
+/* =========================================================
+   VOZ - SÍNTESIS
+   ========================================================= */
+
+function speak(text) {
+
+  if (!("speechSynthesis" in window)) {
+    return;
+  }
+
+  window.speechSynthesis.cancel();
+
+  const utterance =
+    new SpeechSynthesisUtterance(text);
+
+  utterance.lang = "es-CO";
+  utterance.rate = 0.95;
+  utterance.pitch = 1;
+
+  window.speechSynthesis.speak(utterance);
+
+}
+
+
+/* =========================================================
+   RECONOCIMIENTO DE VOZ
+   ========================================================= */
+
+function setupSpeechRecognition() {
+
+  const SpeechRecognition =
+    window.SpeechRecognition ||
+    window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+
+    micStatus.textContent =
+      "El reconocimiento de voz no está disponible en este navegador.";
+
+    micBtn.disabled = true;
+    micBtn.style.opacity = "0.45";
+
+    return;
+
+  }
+
+  recognition = new SpeechRecognition();
+
+  recognition.lang = "es-CO";
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+
+  recognition.onstart = () => {
+
+    isListening = true;
+
+    micBtn.classList.add("listening");
+
+    micStatus.textContent =
+      "JARVIS está escuchando...";
+
+  };
+
+
+  recognition.onresult = (event) => {
+
+    const result =
+      event.results[0][0].transcript;
+
+    commandInput.value = result;
+
+    micStatus.textContent =
+      "Comando recibido.";
+
+    processCommand(result);
+
+    commandInput.value = "";
+
+  };
+
+
+  recognition.onerror = (event) => {
+
+    console.error("Error de reconocimiento:", event.error);
+
+    isListening = false;
+
+    micBtn.classList.remove("listening");
+
+    if (event.error === "not-allowed") {
+
+      micStatus.textContent =
+        "Debes permitir el acceso al micrófono.";
+
+    } else if (event.error === "no-speech") {
+
+      micStatus.textContent =
+        "No escuché nada. Inténtalo nuevamente.";
+
+    } else {
+
+      micStatus.textContent =
+        "No pude escuchar. Inténtalo nuevamente.";
+
+    }
+
+  };
+
+
+  recognition.onend = () => {
+
+    isListening = false;
+
+    micBtn.classList.remove("listening");
+
+    if (
+      micStatus.textContent ===
+      "JARVIS está escuchando..."
+    ) {
+
+      micStatus.textContent =
+        "Pulsa el micrófono para hablar";
+
+    }
+
+  };
+
+}
+
+
+/* =========================================================
+   ACTIVAR MICRÓFONO
+   ========================================================= */
+
+function startListening() {
+
+  if (!recognition) {
+
+    setupSpeechRecognition();
+
+    if (!recognition) {
+      return;
+    }
+
+  }
+
+  try {
+
+    recognition.start();
+
+  } catch (error) {
+
+    console.log("Micrófono:", error);
+
+  }
+
+}
+
+
+/* =========================================================
+   DETENER MICRÓFONO
+   ========================================================= */
+
+function stopListening() {
+
+  if (!recognition) {
+    return;
+  }
+
+  try {
+
+    recognition.stop();
+
+  } catch (error) {
+
+    console.log("Micrófono:", error);
+
+  }
+
+}
+
+
+/* =========================================================
+   NORMALIZAR TEXTO
+   ========================================================= */
+
+function normalizeText(text) {
+
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+}
+
+
+/* =========================================================
+   API INTERNA PARA FUTURAS VERSIONES
+   ========================================================= */
 
 window.JARVIS = {
 
-    processCommand,
+  processCommand,
+  addTask,
+  showTasks,
+  speak,
 
-    addTask,
+  getTasks: () => [...tasks],
 
-    showTasks,
+  clearTasks: () => {
 
-    speak
+    tasks = [];
+
+    saveTasks();
+    renderTasks();
+
+  }
 
 };
-```
