@@ -45,6 +45,20 @@ function updateGreeting() {
   greeting.textContent = h >= 5 && h < 12 ? "Buenos días. Estoy listo para ayudarte." : h < 19 ? "Buenas tardes. Estoy listo para ayudarte." : "Buenas noches. Estoy listo para ayudarte.";
 }
 
+function addMessage(text, type) {
+  if (!chat) return;
+  const el = document.createElement("div");
+  el.className = `message ${type === "user" ? "user-message" : "jarvis-message"}`;
+  const name = document.createElement("div");
+  name.className = "message-name";
+  name.textContent = type === "user" ? "TÚ" : "JARVIS";
+  const body = document.createElement("div");
+  body.textContent = text;
+  el.append(name, body);
+  chat.appendChild(el);
+  chat.scrollTop = chat.scrollHeight;
+}
+
 function submitCommand() {
   const command = commandInput.value.trim();
   if (!command) return;
