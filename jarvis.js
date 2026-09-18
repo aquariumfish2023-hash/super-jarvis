@@ -222,26 +222,19 @@ function setupJarvisVoice(){
     availableVoices=window.speechSynthesis.getVoices()||[];
     populateVoiceSelector();
 
+    const spanishMale=getSpanishMaleVoices();
     const saved=localStorage.getItem(VOICE_KEY);
     if(saved){
-      const selected=availableVoices.find(v=>v.voiceURI===saved);
+      const selected=spanishMale.find(v=>v.voiceURI===saved);
       if(selected){jarvisVoice=selected; if(voiceSelect) voiceSelect.value=selected.voiceURI; return;}
+      localStorage.removeItem(VOICE_KEY);
     }
 
-    // Perfil automático: primero intenta una voz masculina en español.
-    const spanish=availableVoices.filter(v=>/^es(-|_)/i.test(v.lang));
-    const femaleNames=/female|woman|mujer|sabina|monica|mónica|paulina|helena|laura|lucia|lucía|maria|maría|elena|sofia|sofía|camila|valentina|paloma|teresa|carmen/i;
-    const maleNames=/male|man|hombre|jorge|pablo|alvaro|álvaro|alonso|raul|raúl|gonzalo|diego|carlos|juan|andres|andrés|miguel|david|sergio|daniel|enrique|eduardo|roberto|hector|héctor|ruben|rubén|felipe|mateo/i;
-    const maleSpanish=spanish.filter(v=>maleNames.test(v.name) && !femaleNames.test(v.name));
+    // Solo voces masculinas en español.
     const preferred=[/Microsoft.*(Raul|Raúl)/i,/Microsoft.*(Jorge|Pablo|Gonzalo|Alvaro|Álvaro|Alonso)/i,/Google.*(Espa[nñ]ol|Spanish)/i,/Microsoft.*Spanish/i];
     jarvisVoice=null;
-    for(const re of preferred){jarvisVoice=maleSpanish.find(v=>re.test(v.name));if(jarvisVoice)break;}
-    if(!jarvisVoice) jarvisVoice=maleSpanish[0]||null;
-    if(!jarvisVoice){
-      const british=availableVoices.filter(v=>/en-GB/i.test(v.lang) && !femaleNames.test(v.name));
-      jarvisVoice=british.find(v=>maleNames.test(v.name))||british[0]||null;
-    }
-    if(!jarvisVoice) jarvisVoice=availableVoices.find(v=>maleNames.test(v.name)&&!femaleNames.test(v.name))||null;
+    for(const re of preferred){jarvisVoice=spanishMale.find(v=>re.test(v.name));if(jarvisVoice)break;}
+    if(!jarvisVoice) jarvisVoice=spanishMale[0]||null;
     if(voiceSelect && jarvisVoice) voiceSelect.value=jarvisVoice.voiceURI;
   };
 
@@ -250,16 +243,19 @@ function setupJarvisVoice(){
   if(typeof window.speechSynthesis.onvoiceschanged!=="undefined") window.speechSynthesis.onvoiceschanged=loadVoices;
 }
 
+function getSpanishMaleVoices(){
+  const femaleNames=/female|woman|mujer|sabina|monica|mónica|paulina|helena|laura|lucia|lucía|maria|maría|elena|sofia|sofía|camila|valentina|paloma|teresa|carmen|beatriz|isabel|gabriela|carolina|daniela|adriana|patricia|alejandra|veronica|verónica|silvia|rosa|natalia|ximena|jimena|fernanda|lorena|claudia|gloria|susana|angela|ángela|andrea|mariana|juliana|tatiana|diana|estefania|estefanía|paola|viviana|yaneth|yolanda/i;
+  const maleNames=/male|man|hombre|jorge|pablo|alvaro|álvaro|alonso|raul|raúl|gonzalo|diego|carlos|juan|andres|andrés|miguel|david|sergio|daniel|enrique|eduardo|roberto|hector|héctor|ruben|rubén|felipe|mateo|sebastian|sebastián|alejandro|cristian|cristian|oscar|óscar|manuel|francisco|rafael|gabriel|javier|vicente|martin|martín|luis|fernando|ricardo|samuel|nicolas|nicolás|tomas|tomás|esteban|bruno|marcos|ivan|iván|adrian|adrián|emilio|hugo|arturo|cesar|césar|ignacio|joaquin|joaquín|maximiliano|ramiro|santiago/i;
+  return availableVoices.filter(v=>/^es(?:-|_)/i.test(v.lang) && !femaleNames.test(v.name) && maleNames.test(v.name));
+}
+
 function populateVoiceSelector(){
   if(!voiceSelect) return;
   const current=voiceSelect.value;
+  const voices=getSpanishMaleVoices().slice().sort((a,b)=>a.lang.localeCompare(b.lang)||a.name.localeCompare(b.name));
   voiceSelect.innerHTML="";
-  const voices=availableVoices.slice().sort((a,b)=>{
-    const aEs=/^es(-|_)/i.test(a.lang), bEs=/^es(-|_)/i.test(b.lang);
-    return Number(bEs)-Number(aEs) || a.lang.localeCompare(b.lang) || a.name.localeCompare(b.name);
-  });
   if(!voices.length){
-    const o=document.createElement("option");o.value="";o.textContent="No hay voces disponibles";voiceSelect.appendChild(o);return;
+    const o=document.createElement("option");o.value="";o.textContent="No hay voces masculinas en español disponibles";voiceSelect.appendChild(o);return;
   }
   voices.forEach(v=>{
     const o=document.createElement("option");
@@ -268,7 +264,7 @@ function populateVoiceSelector(){
     voiceSelect.appendChild(o);
   });
   if(current && voices.some(v=>v.voiceURI===current)) voiceSelect.value=current;
-  else if(jarvisVoice) voiceSelect.value=jarvisVoice.voiceURI;
+  else if(jarvisVoice && voices.some(v=>v.voiceURI===jarvisVoice.voiceURI)) voiceSelect.value=jarvisVoice.voiceURI;
 }
 
 function selectJarvisVoice(uri){
