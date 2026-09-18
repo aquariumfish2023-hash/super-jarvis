@@ -450,6 +450,24 @@ button {
   text-shadow: 0 0 8px rgba(255, 69, 103, 0.8);
 }
 
+/* ESTADO DE VOZ JARVIS */
+body.jarvis-speaking .core {
+  animation: jarvisSpeaking 1.35s infinite ease-in-out;
+  box-shadow:
+    0 0 22px rgba(0, 217, 255, 0.95),
+    0 0 65px rgba(0, 217, 255, 0.38),
+    inset 0 0 38px rgba(0, 217, 255, 0.22);
+}
+
+body.jarvis-speaking .ring-1 { animation-duration: 3s; }
+body.jarvis-speaking .ring-2 { animation-duration: 4s; }
+body.jarvis-speaking .ring-3 { animation-duration: 2s; }
+
+@keyframes jarvisSpeaking {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.055); }
+}
+
 /* FOOTER */
 
 footer {

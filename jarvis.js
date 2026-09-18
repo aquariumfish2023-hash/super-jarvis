@@ -11,6 +11,8 @@ let notes = loadArray(NOTES_KEY);
 let recognition = null;
 let isListening = false;
 let busyTimer = null;
+let availableVoices = [];
+let jarvisVoice = null;
 
 const chat = document.getElementById("chat");
 const commandInput = document.getElementById("commandInput");
@@ -29,6 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
   updateGreeting();
   renderTasks();
   setupSpeechRecognition();
+  setupJarvisVoice();
   sendBtn.addEventListener("click", submitCommand);
   commandInput.addEventListener("keydown", e => {
     if (e.key === "Enter") { e.preventDefault(); submitCommand(); }
@@ -208,10 +211,38 @@ function smartFallback(command){
 /* =========================================================
    VOZ
    ========================================================= */
+function setupJarvisVoice(){
+  if(!("speechSynthesis" in window)) return;
+  const loadVoices=()=>{
+    availableVoices=window.speechSynthesis.getVoices()||[];
+    const spanish=availableVoices.filter(v=>/^es(-|_)/i.test(v.lang));
+    const preferred=[
+      /Microsoft.*(Jorge|Pablo|Alvaro|Alonso)/i,
+      /Google.*Espa[nñ]ol/i,
+      /Microsoft.*Spanish/i,
+      /Google.*Spanish/i
+    ];
+    jarvisVoice=null;
+    for(const re of preferred){ jarvisVoice=spanish.find(v=>re.test(v.name)); if(jarvisVoice) break; }
+    if(!jarvisVoice) jarvisVoice=spanish.find(v=>/male|hombre|jorge|pablo|alvaro|alonso/i.test(v.name))||spanish[0]||availableVoices.find(v=>/en-GB/i.test(v.lang));
+  };
+  loadVoices();
+  if(typeof window.speechSynthesis.onvoiceschanged!=="undefined") window.speechSynthesis.onvoiceschanged=loadVoices;
+}
 function speak(text){
   if(!("speechSynthesis" in window)) return;
+  setupJarvisVoice();
   window.speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(text); u.lang="es-CO"; u.rate=.95; u.pitch=1; window.speechSynthesis.speak(u);
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang=jarvisVoice?.lang||"es-CO";
+  if(jarvisVoice) u.voice=jarvisVoice;
+  u.rate=.86;
+  u.pitch=.82;
+  u.volume=1;
+  u.onstart=()=>{document.body.classList.add("jarvis-speaking"); if(micStatus&&!isListening) micStatus.textContent="JARVIS está hablando...";};
+  u.onend=()=>{document.body.classList.remove("jarvis-speaking"); if(micStatus&&!isListening) micStatus.textContent="Listo.";};
+  u.onerror=()=>{document.body.classList.remove("jarvis-speaking"); if(micStatus&&!isListening) micStatus.textContent="Listo.";};
+  window.speechSynthesis.speak(u);
 }
 function setupSpeechRecognition(){
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
