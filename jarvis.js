@@ -6,6 +6,7 @@
 
 const TASKS_KEY = "super_jarvis_v2_tasks";
 const NOTES_KEY = "super_jarvis_v2_notes";
+const VOICE_KEY = "super_jarvis_voice";
 let tasks = loadArray(TASKS_KEY);
 let notes = loadArray(NOTES_KEY);
 let recognition = null;
@@ -13,6 +14,8 @@ let isListening = false;
 let busyTimer = null;
 let availableVoices = [];
 let jarvisVoice = null;
+let voiceSelect = null;
+let voiceStatus = null;
 
 const chat = document.getElementById("chat");
 const commandInput = document.getElementById("commandInput");
@@ -30,6 +33,7 @@ const btnHelp = document.getElementById("btnHelp");
 document.addEventListener("DOMContentLoaded", () => {
   updateGreeting();
   renderTasks();
+  setupVoiceControls();
   setupSpeechRecognition();
   setupJarvisVoice();
   sendBtn.addEventListener("click", submitCommand);
@@ -338,7 +342,5 @@ function setupVoiceControls(){
   }
   if(test) test.addEventListener("click",()=>speak("Hola. Soy JARVIS. Estoy listo para ayudarte."));
 }
-
-document.addEventListener("DOMContentLoaded",()=>{setupVoiceControls();setupJarvisVoice();});
 
 window.JARVIS={processCommand,addTask,showTasks,speak,getTasks:()=>[...tasks],getNotes:()=>[...notes],clearTasks:clearAllTasks,clearNotes};
