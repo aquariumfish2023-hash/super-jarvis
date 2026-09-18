@@ -116,7 +116,7 @@ function isIdentity(t) { return /quien eres|como te llamas|cual es tu nombre|tu 
 function isHelp(t) { return t === "ayuda" || /que puedes hacer|como te puedo usar|comandos|opciones/.test(t); }
 function isShowTasks(t) { return /mis tareas|ver tareas|mostrar tareas|muestrame.*tareas|que tengo pendiente|pendientes/.test(t); }
 function isClearTasks(t) { return /borra|elimina|limpia|vac(a|í)a|quitar.*tareas/.test(t) && /todas|todo|mis tareas/.test(t); }
-function isCreateTask(t) { return /recu[eé]rdame|acuerdame|acuerdame|agrega(r)? (una )?tarea|anade(r)? (una )?tarea|a[nñ]ade(r)? (una )?tarea|crear (una )?tarea|crea(r)? (una )?tarea|nueva tarea|tarea /.test(t); }
+function isCreateTask(t) { return /(?:recu[eé]rdame|acuerdame|recuerda(?:me)?|acuerda(?:me)?|agrega(?:r)? (?:una )?tarea|anade(?:r)? (?:una )?tarea|a[nn]ade(?:r)? (?:una )?tarea|crear (?:una )?tarea|crea(?:r)? (?:una )?tarea|nueva tarea|tarea\s+)/.test(t); }
 function isCompleteTask(t) { return /marca(r)? .*complet|completa(r)? .*tarea|termin(e|a|ar) .*tarea|ya hice|ya termine/.test(t); }
 function isDeleteTask(t) { return /borra(r)? .*tarea|elimina(r)? .*tarea|quita(r)? .*tarea/.test(t); }
 function isCreateNote(t) { return /anota|apunta|guarda.*nota|crea.*nota|nueva nota/.test(t); }
@@ -138,7 +138,7 @@ function getHelp() {
    TAREAS
    ========================================================= */
 function createTaskFromCommand(command) {
-  let taskText = command.replace(/recu[eé]rdame/ig, "").replace(/agrega(r)? (una )?tarea/ig, "").replace(/anade(r)? (una )?tarea/ig, "").replace(/a[nñ]ade(r)? (una )?tarea/ig, "").replace(/crear (una )?tarea/ig, "").replace(/crea(r)? (una )?tarea/ig, "").replace(/nueva tarea/ig, "").replace(/^tarea/ig, "").trim();
+  let taskText = command.replace(/recu[eé]rdame/ig, "").replace(/acu[eé]rdame/ig, "").replace(/recuerda(?:me)?/ig, "").replace(/acuerda(?:me)?/ig, "").replace(/agrega(r)? (una )?tarea/ig, "").replace(/anade(r)? (una )?tarea/ig, "").replace(/a[nñ]ade(r)? (una )?tarea/ig, "").replace(/crear (una )?tarea/ig, "").replace(/crea(r)? (una )?tarea/ig, "").replace(/nueva tarea/ig, "").replace(/^tarea/ig, "").trim();
   taskText = taskText.replace(/^(que|de|para)\s+/i, "").replace(/^(que|de|para)\s+/i, "").trim();
   if (!taskText) return "Claro. ¿Qué tarea quieres que recuerde?";
   addTask(taskText);
