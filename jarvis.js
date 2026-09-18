@@ -212,6 +212,54 @@ function smartFallback(command){
   return `Entiendo tu mensaje, pero esa función todavía no está disponible en esta versión. Puedes pedirme tareas, notas, cálculos, fecha, hora o ayuda. Dijiste: “${command}”.`;
 }
 
+function setupSpeechRecognition(){
+  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SpeechRecognition){
+    if(micStatus) micStatus.textContent="El reconocimiento de voz no está disponible en este navegador.";
+    if(micBtn){micBtn.disabled=true;micBtn.style.opacity=".45";}
+    return;
+  }
+  recognition=new SpeechRecognition();
+  recognition.lang="es-CO";
+  recognition.continuous=false;
+  recognition.interimResults=false;
+  recognition.maxAlternatives=1;
+  recognition.onstart=()=>{isListening=true;micBtn.classList.add("listening");micStatus.textContent="JARVIS está escuchando...";};
+  recognition.onresult=e=>{
+    const result=e.results[0][0].transcript;
+    commandInput.value=result;
+    micStatus.textContent="Comando recibido.";
+    processCommand(result);
+    commandInput.value="";
+  };
+  recognition.onerror=e=>{
+    isListening=false;
+    micBtn.classList.remove("listening");
+    micStatus.textContent=e.error==="not-allowed"?"Debes permitir el acceso al micrófono.":e.error==="no-speech"?"No escuché nada. Inténtalo nuevamente.":"No pude escuchar. Inténtalo nuevamente.";
+  };
+  recognition.onend=()=>{
+    isListening=false;
+    micBtn.classList.remove("listening");
+    if(micStatus.textContent==="JARVIS está escuchando...") micStatus.textContent="Pulsa el micrófono para hablar";
+  };
+}
+function startListening(){
+  stopJarvisSpeech();
+  if(!recognition){setupSpeechRecognition();if(!recognition)return;}
+  try{recognition.start();}catch(e){console.log("Micrófono:",e);}
+}
+function stopListening(){if(!recognition)return;try{recognition.stop();}catch(e){console.log("Micrófono:",e);}}
+function setThinking(on){
+  clearTimeout(busyTimer);
+  if(on){
+    if(micStatus) micStatus.textContent="JARVIS está pensando...";
+    busyTimer=setTimeout(()=>{if(!isListening&&micStatus)micStatus.textContent="Listo.";},900);
+  }else if(!isListening&&micStatus) micStatus.textContent="Listo.";
+}
+function normalizeText(text){return String(text).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();}
+function loadArray(key){try{const v=JSON.parse(localStorage.getItem(key)||"[]");return Array.isArray(v)?v:[];}catch{return[];}}
+function saveArray(key,value){try{localStorage.setItem(key,JSON.stringify(value));}catch(e){console.error("Error guardando datos:",e);}}
+
 /* =========================================================
    VOZ JARVIS V7
    Voz masculina en español + perfiles + pausas naturales.
