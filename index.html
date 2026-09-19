@@ -79,6 +79,11 @@
           <span>Tareas</span>
         </button>
 
+        <button class="quick-btn" id="btnNotes">
+          <span class="quick-icon">📝</span>
+          <span>Notas</span>
+        </button>
+
         <button class="quick-btn" id="btnHelp">
           <span class="quick-icon">❓</span>
           <span>Ayuda</span>
@@ -108,6 +113,8 @@
           🎙️
         </button>
 
+        <button id="btnStop" class="stop-btn" type="button">⏹ Detener voz</button>
+
         <div id="micStatus" class="mic-status">
           Pulsa el micrófono para hablar
         </div>
@@ -121,6 +128,11 @@
             <button id="testVoiceBtn" class="test-voice-btn" type="button">Probar voz</button>
           </div>
           <div id="voiceStatus" class="voice-status">Voz disponible en el dispositivo.</div>
+        </div>
+
+        <div class="utility-actions">
+          <button id="btnNewTask" type="button">➕ Nueva tarea</button>
+          <button id="btnNewNote" type="button">📝 Nueva nota</button>
         </div>
 
       </section>
@@ -143,8 +155,18 @@
 
     </main>
 
+    <section class="data-section">
+      <div class="section-title"><span>📝</span><span>Mis notas</span></div>
+      <div id="notesList" class="notes-list"><div class="empty-tasks">No tienes notas guardadas.</div></div>
+    </section>
+
+    <section class="data-section">
+      <div class="section-title"><span>⚡</span><span>Actividad reciente</span></div>
+      <div id="activityList" class="activity-list"><div class="empty-tasks">Sin actividad reciente.</div></div>
+    </section>
+
     <footer>
-      SUPER JARVIS V7 · Asistente personal
+      SUPER JARVIS V9 · Asistente personal
     </footer>
 
   </div>

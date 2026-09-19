@@ -649,3 +649,25 @@ footer {
   .voice-controls { flex-direction: column; }
   .test-voice-btn { min-height: 44px; }
 }
+
+
+/* V9 - asistente y actividad */
+.stop-btn {
+  display: block;
+  margin: 9px auto 0;
+  border: 1px solid rgba(255, 80, 100, .35);
+  border-radius: 10px;
+  padding: 9px 14px;
+  background: rgba(255, 70, 90, .08);
+  color: inherit;
+  cursor: pointer;
+}
+.utility-actions { display:flex; gap:9px; width:min(720px,100%); margin:12px auto 0; }
+.utility-actions button { flex:1; min-height:42px; border:1px solid rgba(0,217,255,.22); border-radius:10px; background:rgba(0,217,255,.05); color:inherit; cursor:pointer; }
+.data-section { width:min(720px,100%); margin:18px auto 0; }
+.notes-list,.activity-list { display:flex; flex-direction:column; gap:8px; }
+.note-item { display:flex; align-items:center; gap:10px; padding:11px 12px; border:1px solid rgba(0,217,255,.13); border-radius:10px; background:rgba(0,217,255,.035); }
+.note-text { flex:1; line-height:1.4; font-size:14px; }
+.activity-item { padding:9px 11px; border-left:2px solid rgba(0,217,255,.3); background:rgba(255,255,255,.025); color:var(--muted); font-size:12px; border-radius:0 8px 8px 0; }
+.task-meta { display:block; margin-top:4px; color:var(--muted); font-size:11px; font-weight:normal; }
+@media (max-width:520px){ .utility-actions{flex-direction:column;} }
